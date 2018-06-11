@@ -4,7 +4,7 @@
 #/
 #/ Options:
 #/  -u, --url=URL        public fuseShift app's URL
-#/  -k, --key=KEY        path to the private key
+#/  -k, --key=KEY        path to the private key (defaults to ./fuse_shift.private.pem)
 require 'base64'
 require 'csv'
 require 'json'
@@ -14,20 +14,21 @@ require 'uri'
 require 'optparse'
 
 # default options
-remote_url = ENV["FUSE_SHIFT_REMOTE_URL"] || "http://localhost:3000"
-key_path = './fuse_shift.private.pem'
+opts = {
+  remote_url: ENV["FUSE_SHIFT_REMOTE_URL"] || "http://localhost:3000",
+  key_path: './fuse_shift.private.pem'
+}
 
-# parse arguments
-ARGV.options do |opts|
-  opts.on("-u", "--url=val") { |val| remote_url = val }
-  opts.on("-k", "--key=val") { |val| key_path = val } 
-  opts.on_tail("-h", "--help") { exec "grep ^#/<'#{__FILE__}'|cut -c4-" }
-  opts.parse!
+ARGV.options do |o|
+  o.on("-u", "--url=val") { |val| opts[:remote_url] = val }
+  o.on("-k", "--key=val") { |val| opts[:key_path] = val } 
+  o.on_tail("-h", "--help") { exec "grep ^#/<'#{__FILE__}'|cut -c4-" }
+  o.parse!
 end
 
 
-def decrypt(string, key_path)
-  rsa_private_key = OpenSSL::PKey::RSA.new(File.read(key_path), "ruby")
+def decrypt(string, opts)
+  rsa_private_key = OpenSSL::PKey::RSA.new(File.read(opts[:key_path]), "ruby")
   rsa_private_key.private_decrypt(Base64.strict_decode64(string))
 end
 
@@ -35,22 +36,22 @@ def ends_with?(value, string)
   value.to_s[-string.length, string.length] == string
 end
 
-def get(url)
-  uri = URI.parse("#{url}/registrations?confirmed=true")
+def get(opts)
+  uri = URI.parse("#{opts[:remote_url]}/registrations?confirmed=true")
   http = Net::HTTP.new(uri.host, uri.port)
   http.use_ssl = uri.scheme == "https"
   response = http.get(uri.request_uri)
   JSON.parse(response.body)
 end
 
-def normalize(data, key_path)
+def normalize(data, opts)
   data.map do |attributes|
     attributes.map do |key, value|
-      value = decrypt(value, key_path) if ends_with?(value, "==")
-      key, value = "is_friend", value ? 0 : 1 if key == "is_member" 
-      key = 'hashed_email' if key == 'hashedEmail'
-      [key, value]
-    end.to_h
+      value = decrypt(value, opts) if ends_with?(value, "==")
+      key, value = "friend", value ? 0 : 1 if key == "is_member" 
+      key = 'mobile' if key == 'phonenumber'
+      [key, value] unless ['hashedEmail', 'confirmed'].include?(key)
+    end.compact.to_h
   end
 end
 
@@ -62,7 +63,7 @@ def to_csv(data)
   end
 end
   
-data = get(remote_url)
-data = normalize(data, key_path)
+data = get(opts)
+data = normalize(data, opts)
 puts to_csv(data)
   
