@@ -48,9 +48,9 @@ def normalize(data, opts)
   data.map do |attributes|
     attributes.map do |key, value|
       value = decrypt(value, opts) if ends_with?(value, "==")
-      key, value = "friend", value ? 0 : 1 if key == "is_member" 
+      key, value = "friend", value ? 1 : 0 if key == "is_friend" 
       key = 'mobile' if key == 'phonenumber'
-      [key, value] unless ['hashedEmail', 'confirmed'].include?(key)
+      [key, value] unless ['hashed_email', 'confirmed'].include?(key)
     end.compact.to_h
   end
 end
