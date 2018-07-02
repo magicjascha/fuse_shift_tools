@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+
+require "faker"
+
+# name
+# email
+# phonenumber
+# is_friend
+# contact_person
+# city
+# shortname
+# german
+# english
+# french
+# comment
+# start
+# end
+
+# nächste Schritte: 
+# Command line arguments aus download script übernehmen
+# --count + Zahl (soll diese Anzahl an Testdatensätzen erzeugen)
+# Methode soll 1 FakeRegistration erzeugen
+# die Anzahl dann auf Command Line ausgeben
