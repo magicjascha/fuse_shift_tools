@@ -1,6 +1,73 @@
 #!/usr/bin/env ruby
-
+#/ Usage: fakedata 
+#/ builds fake registration data and outputs csv
+#/
+#/ Options:
+#/  -c  --count=INT               number of fake registrations, defaults to 5
+#/  -s, --festival_start=DATE     festival start date,defaults to 2018-06-20 06:00:00
+#/                                You can alternatively put it in ENV["FUSE_SHIFT_FESTIVAL_START"]
+#/  -e, --festival_end=DATE       festival end date, defaults to 2018-06-20 06:00:00
+#/                                You can alternatively put it in ENV["FUSE_SHIFT_FESTIVAL_END"]
 require "faker"
+require "time"
+require 'optparse'
+require 'csv'
+require '../lib/data_manipulation'
+
+# default options
+opts = {
+  count: 5,
+  festival_start: ENV["FUSE_SHIFT_FESTIVAL_START"] || "2018-06-20 06:00:00",
+  festival_end: ENV["FUSE_SHIFT_FESTIVAL_END"] || "2018-07-10 18:00:00"
+}
+
+ARGV.options do |o|
+  o.on("-c", "--count=val") { |val| opts[:count] = val.to_i }
+  o.on("-s", "--festival_start=val") { |val| opts[:festival_start] = val }
+  o.on("-e", "--festival_end=val") { |val| opts[:festival_end] = val } 
+  o.on_tail("-h", "--help") { exec "grep ^#/<'#{__FILE__}'|cut -c4-" }
+  o.parse!
+end
+
+class Registration
+   attr_accessor :name, :email, :friend, :contact_person, :city, :shortname, :german, :english, :french, :comment, :start, :end
+  def initialize(festival_start, festival_end)
+    @name = Faker::Name.name
+    @shortname = @name[1,5]
+    @email = Faker::Internet.unique.email
+    @phonenumber = Faker::Number.leading_zero_number(10)
+    @city = Faker::Space.planet
+    @friend = Faker::Number.between(0, 1)
+    @contact_person = "contact@#{city}.de"
+    @german = Faker::Number.between(0, 1)
+    @english = Faker::Number.between(0, 1)
+    @french = Faker::Number.between(0, 1)
+    @comment = Faker::Community.quotes
+    @start = full_hour(Faker::Time.between(festival_start, festival_end, :all)).to_datetime
+    @end = full_hour(Faker::Time.between(@start, festival_end, :all)).to_datetime
+  end
+  
+  def instance_variables_hash
+    Hash[instance_variables.map{ |name| [name[1..-1], instance_variable_get(name)] }]
+  end
+  
+  private
+    def full_hour(time)
+      timeA = time.to_a
+      Time.new(timeA[5], timeA[4], timeA[3], timeA[2])
+    end
+end  
+
+def build_fake_registrations(opts)
+  a = []
+  for i in 1..opts[:count]
+    a.push(Registration.new(opts[:festival_start], opts[:festival_end]).instance_variables_hash)
+  end
+  a
+end
+
+data = build_fake_registrations(opts)
+puts DataManipulation.to_csv(data)
 
 # name
 # email

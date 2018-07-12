@@ -12,6 +12,7 @@ require 'net/http'
 require 'openssl'
 require 'uri'
 require 'optparse'
+require '../lib/data_manipulation'
 
 # default options
 opts = {
@@ -48,22 +49,15 @@ def normalize(data, opts)
   data.map do |attributes|
     attributes.map do |key, value|
       value = decrypt(value, opts) if ends_with?(value, "==")
-      key, value = "friend", value ? 1 : 0 if key == "is_friend" 
+      key = "friend"  if key == "is_friend"
+      value = value=="1" ? 1 : 0 if ["friend", "german", "english", "french"].include?(key)
       key = 'mobile' if key == 'phonenumber'
       [key, value] unless ['hashed_email', 'confirmed'].include?(key)
     end.compact.to_h
   end
 end
-
-def to_csv(data)
-  headers = data.first.keys
-  csv = CSV.generate(headers: true) do |csv|
-    csv << headers
-    data.each { |attributes| csv << attributes } 
-  end
-end
   
 data = get(opts)
 data = normalize(data, opts)
-puts to_csv(data)
+puts DataManipulation.to_csv(data)
   
