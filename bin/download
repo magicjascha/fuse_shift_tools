@@ -5,6 +5,8 @@
 #/ Options:
 #/  -u, --url=URL        public fuseShift app's URL
 #/  -k, --key=KEY        path to the private key (defaults to ./fuse_shift.private.pem)
+#/  -s, --subset=[WHICH] downloads only a subset of the registrations, WHICH can be email_confirmed, email_not_confirmed or shift_confirmed
+$LOAD_PATH << "lib"
 require 'base64'
 require 'csv'
 require 'json'
@@ -12,17 +14,19 @@ require 'net/http'
 require 'openssl'
 require 'uri'
 require 'optparse'
-require '../lib/data_manipulation'
+require 'fuse_shift_tools/data_manipulation'
 
 # default options
 opts = {
   remote_url: ENV["FUSE_SHIFT_REMOTE_URL"] || "http://localhost:3000",
-  key_path: './fuse_shift.private.pem'
+  key_path: './fuse_shift.private.pem',
+  subset: ""
 }
 
 ARGV.options do |o|
   o.on("-u", "--url=val") { |val| opts[:remote_url] = val }
-  o.on("-k", "--key=val") { |val| opts[:key_path] = val } 
+  o.on("-k", "--key=val") { |val| opts[:key_path] = val }
+  o.on("-s", "--subset=val") {|val| opts[:subset] = val}
   o.on_tail("-h", "--help") { exec "grep ^#/<'#{__FILE__}'|cut -c4-" }
   o.parse!
 end
@@ -38,10 +42,23 @@ def ends_with?(value, string)
 end
 
 def get(opts)
-  uri = URI.parse("#{opts[:remote_url]}/registrations?confirmed=true")
+  url = "#{opts[:remote_url]}/registrations"
+  if opts[:subset]=="shift_confirmed"
+    url+="?shift_confirmed=true"
+  elsif opts[:subset]=="email_confirmed"
+    url+="?confirmed=true"
+  elsif opts[:subset]=="email_not_confirmed"
+    url+="?confirmed=false"
+  end
+  uri = URI.parse(url)
   http = Net::HTTP.new(uri.host, uri.port)
   http.use_ssl = uri.scheme == "https"
   response = http.get(uri.request_uri)
+  ####
+#   request = http.get(uri.request_uri)
+#   request.basic_auth 'Bochum', 'pw2'
+#   response = http.request request
+  ####
   JSON.parse(response.body)
 end
 
@@ -52,11 +69,11 @@ def normalize(data, opts)
       key = "friend"  if key == "is_friend"
       value = value=="1" ? 1 : 0 if ["friend", "german", "english", "french"].include?(key)
       key = 'mobile' if key == 'phonenumber'
-      [key, value] unless ['hashed_email', 'confirmed'].include?(key)
+      [key, value] unless ['hashed_email'].include?(key)
     end.compact.to_h
   end
 end
-  
+
 data = get(opts)
 data = normalize(data, opts)
 puts DataManipulation.to_csv(data)

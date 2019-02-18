@@ -1,0 +1,103 @@
+#!/usr/bin/env ruby
+#/ takes registrations in the file and sends warning emails about the deadline to the registered people and the contact_person
+#/
+#/ before using this program you need to set environment variables with information about the email-server that should be used for sending the emails: "SMTP_ADDRESS", "PORT", "USERNAME", "PASSWORD", "FROM_EMAIL"
+#/
+#/ Usage: send_deadline_warning -f [path to file] -d [deadline-string in the format you want to send it]
+#/
+#/Option:
+#/  -r, --realrun, really send the emails. Default is a testrun which only prints the emails to the terminal.
+#/  -l --locale, path to locale file, where you can adjust email-texts. Default is locale/default.yaml
+
+require 'mail'
+require 'open3'
+require 'csv'
+require 'optparse'
+require 'yaml'
+
+opts = {}
+
+ARGV.options do |o|
+  o.on("-f", "--file=val") { |val| opts[:path] = val }
+  o.on("-r", "--realrun")
+  o.on("-l", "--locale=val"){ |val| opts[:locale] = val }
+  o.on_tail("-h", "--help") { exec "grep ^#/<'#{__FILE__}'|cut -c4-" }
+  o.parse!
+end
+
+if opts[:path]==nil
+  puts 'Filename not given. Add -f [path to filename]'
+  exit
+end
+
+email_texts = YAML.load(File.read("./fuse_shift_emails_locales.yml"))
+
+Mail.defaults do
+  delivery_method :smtp, address: ENV["SMTP_ADDRESS"], port: ENV["PORT"], :user_name  => ENV["USERNAME"],
+                          :password   => ENV["PASSWORD"],
+                          :enable_ssl => true
+end
+
+csv_text = File.read(opts[:path])
+csv = CSV.parse(csv_text)
+headers = csv[0]
+email_index = headers.find_index('email')
+name_index = headers.find_index('name')
+confirmed_index = headers.find_index('confirmed')
+contact_persons_email_index = headers.find_index('contact_persons_email')
+csv.shift #remove headers
+
+def get_email_addresses(registrations, email_index)
+  registrations.map{|registration| registration[email_index]}
+end
+
+contact_people = csv.map{|registration| registration[contact_persons_email_index]}.uniq
+nametable_strings = Hash.new()
+contact_people.each do |c|
+  selection = csv.select{|r| r[contact_persons_email_index]==c}
+  lines = selection.map{|r| r[name_index]+"   "+r[email_index] }
+  nametable = lines.join("\n")
+  nametable_strings[c]=nametable
+end
+
+
+
+unconfirmed_email_addresses = get_email_addresses(csv, email_index)
+puts "\n-------------------------sending warning emails to #{unconfirmed_email_addresses.length} registered people who didn't confirm-----------------"
+
+puts "\nsend to:"+unconfirmed_email_addresses.to_s
+puts "\nsubject:"+email_texts["registree"]["subject"]
+puts "\nbody:\n"+email_texts["registree"]["body"]
+
+
+unconfirmed_email_addresses.map do |email_address|
+  mail = Mail.new do
+    from     ENV["FROM_EMAIL"]
+    to       email_address
+    subject  email_texts["registree"]["subject"]
+    body     email_texts["registree"]["body"]
+  end
+#   p mail.deliver
+end
+
+puts "\n-------------------------sending warning emails to #{contact_people.length} contact people about the ones who didn't confirm-----------------"
+
+nametable_strings.map do |contact_person, nametable|
+  mail = Mail.new do
+      from     ENV["FROM_EMAIL"]
+      to       contact_person
+      subject  email_texts["contact_person"]["subject"]
+      body     email_texts["contact_person"]["body"]+"\n\n#{nametable}\n"
+
+  end
+  puts "\n-------\n"
+  print "To:"
+  puts mail.to
+  print "Subject: "
+  puts mail.subject
+  puts "Body:\n\n"
+  puts mail.body
+#   p mail.deliver
+end
+
+

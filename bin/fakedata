@@ -6,17 +6,18 @@
 #/  -c  --count=INT               number of fake registrations, defaults to 5
 #/  -s, --festival_start=DATE     festival start date,defaults to 2018-06-20 06:00:00
 #/                                You can alternatively put it in ENV["FUSE_SHIFT_FESTIVAL_START"]
-#/  -e, --festival_end=DATE       festival end date, defaults to 2018-06-20 06:00:00
+#/  -e, --festival_end=DATE       festival end date, defaults to 2018-07-10 18:00:00
 #/                                You can alternatively put it in ENV["FUSE_SHIFT_FESTIVAL_END"]
+$LOAD_PATH << "lib"
 require "faker"
 require "time"
 require 'optparse'
 require 'csv'
-require '../lib/data_manipulation'
+require 'fuse_shift_tools/data_manipulation'
 
 # default options
 opts = {
-  count: 5,
+  count: 2,
   festival_start: ENV["FUSE_SHIFT_FESTIVAL_START"] || "2018-06-20 06:00:00",
   festival_end: ENV["FUSE_SHIFT_FESTIVAL_END"] || "2018-07-10 18:00:00"
 }
@@ -30,7 +31,9 @@ ARGV.options do |o|
 end
 
 class Registration
-   attr_accessor :name, :email, :friend, :contact_person, :city, :shortname, :german, :english, :french, :comment, :start, :end
+  attr_accessor :name, :email, :friend, :contact_person, :city, :shortname, 
+       :german, :english, :french, :comment, :start, :end
+   
   def initialize(festival_start, festival_end)
     @name = Faker::Name.name
     @shortname = @name[1,5]
@@ -47,7 +50,7 @@ class Registration
     @end = full_hour(Faker::Time.between(@start, festival_end, :all)).to_datetime
   end
   
-  def instance_variables_hash
+  def to_hash
     Hash[instance_variables.map{ |name| [name[1..-1], instance_variable_get(name)] }]
   end
   
@@ -59,11 +62,9 @@ class Registration
 end  
 
 def build_fake_registrations(opts)
-  a = []
-  for i in 1..opts[:count]
-    a.push(Registration.new(opts[:festival_start], opts[:festival_end]).instance_variables_hash)
+  (1..opts[:count]).to_a.inject([]) do |a, _|
+    a.push(Registration.new(opts[:festival_start], opts[:festival_end]).to_hash)
   end
-  a
 end
 
 data = build_fake_registrations(opts)
