@@ -19,7 +19,7 @@ require 'fuse_shift_tools/data_manipulation'
 # default options
 opts = {
   remote_url: ENV["FUSE_SHIFT_REMOTE_URL"] || "http://localhost:3000",
-  key_path: './fuse_shift.private.pem',
+  key_path: './config/development/fuse_shift.private.dev.pem',
   subset: ""
 }
 

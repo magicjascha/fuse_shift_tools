@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.requirements = ["none"]
   s.summary = ""
   s.files = ["lib/fuse_shift_tools/data_manipulation.rb"]
-  s.executables = ["download", "fakedata", "send_emails"]
+  s.executables = ["download", "fakedata", "send_deadline_warning"]
 
   if s.respond_to? :specification_version then
     s.specification_version = 4

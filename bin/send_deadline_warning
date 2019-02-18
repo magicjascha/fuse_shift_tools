@@ -1,13 +1,14 @@
 #!/usr/bin/env ruby
-#/ takes registrations in the file and sends warning emails about the deadline to the registered people and the contact_person
+#/ takes registrations in the file and sends warning emails about the deadline to their emails and the contact_person
 #/
 #/ before using this program you need to set environment variables with information about the email-server that should be used for sending the emails: "SMTP_ADDRESS", "PORT", "USERNAME", "PASSWORD", "FROM_EMAIL"
 #/
-#/ Usage: send_deadline_warning -f [path to file] -d [deadline-string in the format you want to send it]
+#/ Usage: send_deadline_warning -f [path to downloaded csv-file with unconfirmed registrations]
 #/
-#/Option:
+#/ Options:
+#/  -f --file, mandatory path to downloaded csv-file with unconfirmed registrations
 #/  -r, --realrun, really send the emails. Default is a testrun which only prints the emails to the terminal.
-#/  -l --locale, path to locale file, where you can adjust email-texts. Default is locale/default.yaml
+#/  -l --locale, path to locale file, where you can see the email-texts. Default is config/email_texts_defaults.yml To use your own version, choose either a path in config/production or outside the fuse_shift_tools directory. Both will be ignored by updates.
 
 require 'mail'
 require 'open3'
@@ -15,11 +16,11 @@ require 'csv'
 require 'optparse'
 require 'yaml'
 
-opts = {}
+opts = {locale: './config/development/emails_texts_defaults.yml'}
 
 ARGV.options do |o|
   o.on("-f", "--file=val") { |val| opts[:path] = val }
-  o.on("-r", "--realrun")
+  o.on("-r", "--realrun") { |val| opts[:realrun] = true }
   o.on("-l", "--locale=val"){ |val| opts[:locale] = val }
   o.on_tail("-h", "--help") { exec "grep ^#/<'#{__FILE__}'|cut -c4-" }
   o.parse!
@@ -30,13 +31,15 @@ if opts[:path]==nil
   exit
 end
 
-email_texts = YAML.load(File.read("./fuse_shift_emails_locales.yml"))
+email_texts = YAML.load(File.read(opts[:locale]))
 
 Mail.defaults do
   delivery_method :smtp, address: ENV["SMTP_ADDRESS"], port: ENV["PORT"], :user_name  => ENV["USERNAME"],
                           :password   => ENV["PASSWORD"],
                           :enable_ssl => true
 end
+
+puts "This is a testrun. No emails are sent. Use option -r to send" unless opts[:realrun]
 
 csv_text = File.read(opts[:path])
 csv = CSV.parse(csv_text)
@@ -63,12 +66,11 @@ end
 
 
 unconfirmed_email_addresses = get_email_addresses(csv, email_index)
-puts "\n-------------------------sending warning emails to #{unconfirmed_email_addresses.length} registered people who didn't confirm-----------------"
+puts "\n-------------------------warning emails to #{unconfirmed_email_addresses.length} registered people who didn't confirm-----------------"
 
-puts "\nsend to:"+unconfirmed_email_addresses.to_s
-puts "\nsubject:"+email_texts["registree"]["subject"]
-puts "\nbody:\n"+email_texts["registree"]["body"]
-
+puts "\nTo:"+unconfirmed_email_addresses.to_s
+puts "Subject:"+email_texts["registree"]["subject"]
+puts "Body:\n\n"+email_texts["registree"]["body"]
 
 unconfirmed_email_addresses.map do |email_address|
   mail = Mail.new do
@@ -77,10 +79,13 @@ unconfirmed_email_addresses.map do |email_address|
     subject  email_texts["registree"]["subject"]
     body     email_texts["registree"]["body"]
   end
-#   p mail.deliver
+  if opts[:realrun]
+    puts "\n"
+    p mail.deliver
+  end
 end
 
-puts "\n-------------------------sending warning emails to #{contact_people.length} contact people about the ones who didn't confirm-----------------"
+puts "\n-------------------------warning emails to #{contact_people.length} contact people about the ones who didn't confirm-----------------"
 
 nametable_strings.map do |contact_person, nametable|
   mail = Mail.new do
@@ -90,14 +95,12 @@ nametable_strings.map do |contact_person, nametable|
       body     email_texts["contact_person"]["body"]+"\n\n#{nametable}\n"
 
   end
+  puts "\nTo:"+mail.to.to_s
+  puts "Subject:"+mail.subject.to_s
+  puts "Body:\n\n"+mail.body.to_s
+  if opts[:realrun]
+    puts "\n"
+    p mail.deliver
+  end
   puts "\n-------\n"
-  print "To:"
-  puts mail.to
-  print "Subject: "
-  puts mail.subject
-  puts "Body:\n\n"
-  puts mail.body
-#   p mail.deliver
 end
-
-
