@@ -8,12 +8,13 @@ gem install fuse_shift_tools-0.1.0.gem
 ```
 (or whatever newest version you find in the root-folder)
 
-We suggest to put your private key and your email texts yml-file in  /config/production. (in /config/development/emails_texts_defaults.yml you find a blue print for the emaill texts yml file).
+We suggest to put your private key and your email texts yml-file in  ```/config/production```. (in ```/config/development/emails_texts_defaults.yml``` you find a blue print for the email texts yml file).
 
 The folders:
+```
 /config/production
 /folder_not_touched_by_updates
-
+```
 and any folder outside the outside the root-directory of fuse_shift_tools will not be touched by updates.
 
 ## Executables:
@@ -36,9 +37,9 @@ Same for environment variables PORT,USERNAME,PASSWORD,FROM_EMAIL.
 
 Per default this is only a testrun, to check which emails would be sent:
 ```
-send_deadline_warning -[path to csv-file with unconfirmed registration ]
+send_deadline_warning -f [path to csv-file with unconfirmed registration ]
 ```
-To really send emails you have to set option -r 
+To really send emails you have to adds option -r 
 
 ### fakedata
 
