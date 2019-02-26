@@ -8,8 +8,6 @@ gem install fuse_shift_tools-0.1.0.gem
 ```
 (or whatever newest version you find in the root-folder)
 
-We suggest to put your private key and your email texts yml-file in  ```/config/production```. (in ```/config/development/emails_texts_defaults.yml``` you find a blue print for the email texts yml file).
-
 The folders:
 ```
 /config/production
@@ -24,22 +22,46 @@ download --help
 ```
 
 ### download
-You can download all registrations, unconfirmed registrations, confirmed registrations and confirmed shifts and decrypt them (see ```download --help``` how to do that). Per default they are printed to the terminal. Probably you want to save them to a csv file:
+
+You can download all registrations, unconfirmed registrations, confirmed registrations and confirmed shifts and decrypt them (see ```download --help``` how to do that). 
+
+You need the private key to decrypt them. We suggest you put it in  ```/config/production```.
+
+There are several inputs you have to make, either by options or by setting environment variables.
+E.g. like this:
 ```
-download -k [path to privatekey] -u [root-url of web app] > ./folder_not_touched_by_updates/filename.csv
+export FS_REMOTE_URL=https://example.com
+export FS_KEYPATH=./config/production/fuseshift.private.pem
+export FS_ADMIN_USER=admin
+download -p [private-key-password] -w [admin-password]
 ```
+
+Per default they are printed to the terminal. Probably you want to save them to a csv file:
+```
+download > ./folder_not_touched_by_updates/filename.csv
+```
+
 ### send_deadline_warning
+
 If you generated a csv from the subset-download of unconfirmed registrations, a few weeks or so before the deadline, you might want to warn those registered people and their contact people, that they didn't confirm. You can send emails to them for that. Before, you will have to set environment variables about which email-server to use in the terminal with 
 ``` 
 export SMTP_ADDRESS=smtp.example.net
 ```
+
 Same for environment variables PORT,USERNAME,PASSWORD,FROM_EMAIL.
 
 Per default this is only a testrun, to check which emails would be sent:
 ```
 send_deadline_warning -f [path to csv-file with unconfirmed registration ]
 ```
-To really send emails you have to adds option -r 
+
+You can customize the emails_texts by using option -l to point to another yaml-file with the same structure as the default in ```/config/development/emails_texts_defaults.yml```, e.g.:
+
+```
+send_deadline_warning -l /config/production/emails_texts_customized.yml -f [path to csv-file with unconfirmed registration ]
+```
+
+To really send emails you have to add option -r 
 
 ### fakedata
 
