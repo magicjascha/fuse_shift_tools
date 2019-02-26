@@ -1,10 +1,11 @@
 #!/usr/bin/env ruby
 #/ Usage: download 
+#/ Before you have to set environmentvariables RSA_PASSWORD, AUTH_ADMIN_USER, AUTH_ADMIN_PW, FUSE_SHIFT_REMOTE_URL
 #/ Downloads and decrypts data from the public fuseShift app.
 #/
 #/ Options:
 #/  -u, --url=URL        public fuseShift app's URL
-#/  -k, --key=KEY        path to the private key (defaults to ./fuse_shift.private.pem)
+#/  -k, --key=KEY        path to the private key (defaults to $FUSE_SHIFT_REMOTE_URL or ./fuse_shift.private.pem)
 #/  -s, --subset=[WHICH] downloads only a subset of the registrations, WHICH can be email_confirmed, email_not_confirmed or shift_confirmed
 $LOAD_PATH << "lib"
 require 'base64'
@@ -50,16 +51,19 @@ def get(opts)
   elsif opts[:subset]=="email_not_confirmed"
     url+="?confirmed=false"
   end
+  
   uri = URI.parse(url)
-  http = Net::HTTP.new(uri.host, uri.port)
-  http.use_ssl = uri.scheme == "https"
-  response = http.get(uri.request_uri)
-  ####
-#   request = http.get(uri.request_uri)
-#   request.basic_auth 'Bochum', 'pw2'
-#   response = http.request request
-  ####
-  JSON.parse(response.body)
+  response = Net::HTTP.start(uri.host, uri.port,
+    :use_ssl => uri.scheme == 'https') do |http|
+
+    request = Net::HTTP::Get.new(uri.request_uri)
+    request.basic_auth 'admin', 'admin'
+
+    response = http.request(request)# Net::HTTPResponse object
+    
+    response.body
+  end
+  JSON.parse(response)
 end
 
 def normalize(data, opts)
