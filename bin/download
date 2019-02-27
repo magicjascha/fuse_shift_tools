@@ -19,6 +19,7 @@ require 'uri'
 require 'optparse'
 require 'fuse_shift_tools/data_manipulation'
 require 'yaml'
+require 'colorize'
 
 # default options
 opts = {
@@ -35,11 +36,16 @@ ARGV.options do |o|
   o.parse!
 end
 
+if !["email_confirmed","email_unconfirmed","shift_confirmed", ""].include?(opts[:subset])
+  puts "the subset you specified is not an option. Use email_confirmed, email_unconfirmed or shift_confirmed".red
+  exit
+end
+
 begin
   yml_text = File.read(opts[:config_path])
   config = YAML.load(yml_text)
 rescue
-  puts "Please provide a config file at ./config/production/config.yml similar to ./config/development/config.yml or set the path with option -c or evironment variable FS_CONFIG_PATH"
+  puts "Please provide a config file at ./config/production/config.yml similar to ./config/development/config.yml or set the path with option -c or evironment variable FS_CONFIG_PATH".red
 end
 
 opts[:remote_url] = config["download"]["remote_url"]
@@ -47,11 +53,11 @@ opts[:auth_admin_user] = config["download"]["auth_admin_user"]
 opts[:key_path] = config["download"]["key_path"]
 
 if !opts[:rsa_password]
-  puts "you need to set the password for the rsa key in an environment variable FS_RSA_PASSWORD"
+  puts "you need to set the password for the rsa key in an environment variable FS_RSA_PASSWORD".red
   exit
 end
 if !opts[:auth_admin_pw]
-  puts "you need to set the password of the webapps admin authentication in an environment variable FS_ADMIN_PW"
+  puts "you need to set the password of the webapps admin authentication in an environment variable FS_ADMIN_PW".red
   exit
 end
 
@@ -59,7 +65,7 @@ def decrypt(string, opts)
   begin
     keytext = File.read(opts[:key_path])
   rescue  
-    puts "you need to input the path to the private rsa-key. Either in an environment variable FS_KEYPATH or per option -k"  
+    puts "you need set the path to the private rsa-key in the config file".red
     exit
   end
   rsa_private_key = OpenSSL::PKey::RSA.new(File.read(opts[:key_path]), opts[:rsa_password])

@@ -17,8 +17,7 @@ require 'csv'
 require 'optparse'
 require 'yaml'
 require 'io/console'
-
-
+require 'colorize'
 
 
 opts = {
@@ -39,7 +38,7 @@ begin
   yml_text = File.read(opts[:config_path])
   config = YAML.load(yml_text)
 rescue
-  puts "Please provide a config file at ./config/production/config.yml similar to ./config/development/config.yml or set the path with option -p or evironment variable FS_CONFIG_PATH"
+  puts "Please provide a config file at ./config/production/config.yml similar to ./config/development/config.yml or set the path with option -c or evironment variable FS_CONFIG_PATH".red
 end
 
 # puts config
@@ -58,7 +57,7 @@ Mail.defaults do
                           enable_ssl: true
 end
 
-puts "\n\nThis is a testrun. No emails are sent. Use option -r to send" unless opts[:realrun]
+puts "\n\nThis is a testrun. No emails are sent. Use option -r to send".red unless opts[:realrun]
 
 begin
   csv_text = File.read(config["send_deadline_warning"]["csv_path"])
@@ -93,9 +92,9 @@ end
 unconfirmed_email_addresses = get_email_addresses(csv, email_index)
 puts "\n-------------------------warning emails to #{unconfirmed_email_addresses.length} registered people who didn't confirm-----------------"
 
-puts "\nTo:"+unconfirmed_email_addresses.to_s
-puts "Subject:"+config["send_deadline_warning"]["email_text"]["registree"]["subject"]
-puts "Body:\n\n"+config["send_deadline_warning"]["email_text"]["registree"]["body"]
+puts "\nTo:".yellow+unconfirmed_email_addresses.to_s.yellow
+puts "Subject:".yellow+config["send_deadline_warning"]["email_text"]["registree"]["subject"].yellow
+puts "Body:\n\n".yellow+config["send_deadline_warning"]["email_text"]["registree"]["body"].yellow
 
 unconfirmed_email_addresses.map do |email_address|
   mail = Mail.new do
@@ -120,9 +119,9 @@ nametable_strings.map do |contact_person, nametable|
       body     config["send_deadline_warning"]["email_text"]["contact_person"]["body"]+"\n\n#{nametable}\n"
 
   end
-  puts "\nTo:"+mail.to.to_s
-  puts "Subject:"+mail.subject.to_s
-  puts "Body:\n\n"+mail.body.to_s
+  puts "\nTo:".yellow+mail.to.to_s.yellow
+  puts "Subject:".yellow+mail.subject.to_s.yellow
+  puts "Body:\n\n".yellow+mail.body.to_s.yellow
   if opts[:realrun]
     puts "\n"
     p mail.deliver
