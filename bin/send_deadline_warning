@@ -1,48 +1,73 @@
 #!/usr/bin/env ruby
-#/ takes registrations in the file and sends warning emails about the deadline to their emails and the contact_person
+#/ takes registrations from a csv-file and sends warning emails about the deadline to the registered people and their contact people
 #/
-#/ before using this program you need to set environment variables with information about the email-server that should be used for sending the emails: "SMTP_ADDRESS", "PORT", "USERNAME", "PASSWORD", "FROM_EMAIL"
+#/ Adjust and copy the config file from ./config/development/config.yml to ./config/production/config.yml or use option -c . Files in the development folder will be overwritten by updates.
+#/ Per default, this program runs in test mode an doesn't send emails. Set option -r to really send.
 #/
-#/ Usage: send_deadline_warning -f [path to downloaded csv-file with unconfirmed registrations]
+#/ Usage: send_deadline_warning [options]
 #/
 #/ Options:
-#/  -f --file, mandatory path to downloaded csv-file with unconfirmed registrations
-#/  -r, --realrun, really send the emails. Default is a testrun which only prints the emails to the terminal.
-#/  -l --locale, path to locale file, where you can see the email-texts. Default is config/email_texts_defaults.yml To use your own version, choose either a path in config/production or outside the fuse_shift_tools directory. Both will be ignored by updates.
+#/  -r, --realrun           really send the emails. Default is a testrun which only prints the emails to the terminal.
+#/  -c, --config-path       path to config file. Defaults to $FS_CONFIG_PATH or ./config/production/config.yml. File has to look similar to ./config/development/config.yml
+#/  -p, --mail-password     password of your email-account. Don't use if you don't want your password in your history, defaults to $MAIL_PASSWORD or asks for password.
 
 require 'mail'
 require 'open3'
 require 'csv'
 require 'optparse'
 require 'yaml'
+require 'io/console'
 
-opts = {locale: './config/development/emails_texts_defaults.yml'}
+
+
+
+opts = {
+  config_path: ENV["FS_CONFIG_PATH"] || "./config/production/config.yml",
+  mailaccount_password: ENV["FS_MAIL_PASSWORD"] 
+}
 
 ARGV.options do |o|
-  o.on("-f", "--file=val") { |val| opts[:path] = val }
   o.on("-r", "--realrun") { |val| opts[:realrun] = true }
-  o.on("-l", "--locale=val"){ |val| opts[:locale] = val }
+  o.on("-c", "--config-path=val") { |val| opts[:config_path] = val }
+  o.on("-p", "--mail-password=val"){ |val| opts[:mailaccount_password] = val }
   o.on_tail("-h", "--help") { exec "grep ^#/<'#{__FILE__}'|cut -c4-" }
   o.parse!
 end
 
-if opts[:path]==nil
-  puts 'Filename not given. Add -f [path to filename]'
-  exit
+p opts
+begin
+  yml_text = File.read(opts[:config_path])
+  config = YAML.load(yml_text)
+rescue
+  puts "Please provide a config file at ./config/production/config.yml similar to ./config/development/config.yml or set the path with option -p or evironment variable FS_CONFIG_PATH"
 end
 
-email_texts = YAML.load(File.read(opts[:locale]))
+# puts config
+
+if !opts[:mailaccount_password]
+  puts "The environment variable FS_MAIL_PASSWORD for your mail accounts password is not set."
+  print "Type email password: "
+  opts[:mailaccount_password] = STDIN.noecho(&:gets).strip
+end
 
 Mail.defaults do
-  delivery_method :smtp, address: ENV["SMTP_ADDRESS"], port: ENV["PORT"], :user_name  => ENV["USERNAME"],
-                          :password   => ENV["PASSWORD"],
-                          :enable_ssl => true
+  delivery_method :smtp,  address: config["mailaccount"]["smtp"], 
+                          port: config["mailaccount"]["port"], 
+                          user_name: config["mailaccount"]["user"],
+                          password: opts[:mailaccount_password],
+                          enable_ssl: true
 end
 
-puts "This is a testrun. No emails are sent. Use option -r to send" unless opts[:realrun]
+puts "\n\nThis is a testrun. No emails are sent. Use option -r to send" unless opts[:realrun]
 
-csv_text = File.read(opts[:path])
-csv = CSV.parse(csv_text)
+begin
+  csv_text = File.read(config["send_deadline_warning"]["csv_path"])
+  csv = CSV.parse(csv_text)
+rescue
+  puts "path to csv file not given in config file"
+  exit
+end  
+  
 headers = csv[0]
 email_index = headers.find_index('email')
 name_index = headers.find_index('name')
@@ -69,15 +94,15 @@ unconfirmed_email_addresses = get_email_addresses(csv, email_index)
 puts "\n-------------------------warning emails to #{unconfirmed_email_addresses.length} registered people who didn't confirm-----------------"
 
 puts "\nTo:"+unconfirmed_email_addresses.to_s
-puts "Subject:"+email_texts["registree"]["subject"]
-puts "Body:\n\n"+email_texts["registree"]["body"]
+puts "Subject:"+config["send_deadline_warning"]["email_text"]["registree"]["subject"]
+puts "Body:\n\n"+config["send_deadline_warning"]["email_text"]["registree"]["body"]
 
 unconfirmed_email_addresses.map do |email_address|
   mail = Mail.new do
-    from     ENV["FROM_EMAIL"]
+    from     config["mailaccount"]["from"]
     to       email_address
-    subject  email_texts["registree"]["subject"]
-    body     email_texts["registree"]["body"]
+    subject  config["send_deadline_warning"]["email_text"]["registree"]["subject"]
+    body     config["send_deadline_warning"]["email_text"]["registree"]["body"]
   end
   if opts[:realrun]
     puts "\n"
@@ -89,10 +114,10 @@ puts "\n-------------------------warning emails to #{contact_people.length} cont
 
 nametable_strings.map do |contact_person, nametable|
   mail = Mail.new do
-      from     ENV["FROM_EMAIL"]
+      from     config["mailaccount"]["from"]
       to       contact_person
-      subject  email_texts["contact_person"]["subject"]
-      body     email_texts["contact_person"]["body"]+"\n\n#{nametable}\n"
+      subject  config["send_deadline_warning"]["email_text"]["contact_person"]["subject"]
+      body     config["send_deadline_warning"]["email_text"]["contact_person"]["body"]+"\n\n#{nametable}\n"
 
   end
   puts "\nTo:"+mail.to.to_s
