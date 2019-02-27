@@ -1,18 +1,13 @@
 #!/usr/bin/env ruby
 #/ Downloads and decrypts data from the public fuseShift app.
 #/
+#/ Adjust and copy the config file from ./config/development/config.yml to ./config/production/config.yml or use option -c to specify another path. Files in the development folder will be overwritten by updates.
+#/
 #/ Usage: download [options]
-#/ There is 4 mandatory inputs: either per option (see below) or with environment variables: FS_REMOTE_URL, FS_RSA_PASSWORD, FS_ADMIN_USER, FS_ADMIN_PW
 #/
 #/ Options:
-#/  -s, --subset=[WHICH]          downloads only a subset of the registrations, WHICH can be email_confirmed, email_unconfirmed or shift_confirmed
-
-#/ mandatory if no environmentvariable set:
-#/  -u, --url=URL                 web app's URL, defaults to $FS_REMOTE_URL or http://localhost:3000
-#/  -k, --rsakey-path=KEYPATH     path to private rsa-key, defaults to $FS_KEYPATH or ./config/development/fuse_shift.private.dev.pem
-#/  -p, --rsa-password=PASSWORD   password of rsa-key, defaults to $FS_RSA_PASSWORD
-#/  -a, --admin-user=USERNAME     username for admin authentication in web app, defaults to $FS_ADMIN_USER
-#/  -w, --admin-password=PW       password for admin authentication in web app, defaults to $FS_ADMIN_PW
+#/  -s, --subset=[WHICH]    downloads only a subset of the registrations, WHICH can be email_confirmed, email_unconfirmed or shift_confirmed
+#/  -c, --config-path       path to config file. Defaults to $FS_CONFIG_PATH or ./config/production/config.yml. File has to look similar to ./config/development/config.yml
 
 $LOAD_PATH << "lib"
 require 'base64'
@@ -23,44 +18,40 @@ require 'openssl'
 require 'uri'
 require 'optparse'
 require 'fuse_shift_tools/data_manipulation'
+require 'yaml'
 
 # default options
 opts = {
   subset: "",
-  remote_url: ENV["FS_REMOTE_URL"] || "http://localhost:3000",
-  key_path: ENV["FS_KEYPATH"] || './config/development/fuse_shift.private.dev.pem',
-  rsa_password: ENV["FS_RSA_PASSWORD"],# || "ruby",
-  auth_admin_user: ENV["FS_ADMIN_USER"],
+  config_path: ENV["FS_CONFIG_PATH"] || "./config/production/config.yml",
+  rsa_password: ENV["FS_RSA_PASSWORD"],
   auth_admin_pw: ENV["FS_ADMIN_PW"],
 }
 
-
-
 ARGV.options do |o|
-  o.on("-u", "--url=val") { |val| opts[:remote_url] = val }
-  o.on("-k", "--rsakey-path=val") { |val| opts[:key_path] = val }
-  o.on("-p", "--rsa-password=val") { |val| opts[:rsa_password] = val }
   o.on("-s", "--subset=val") {|val| opts[:subset] = val}
-  o.on("-a", "--admin-user=val") {|val| opts[:auth_admin_user] = val}
-  o.on("-w", "--admin-password=val") {|val| opts[:auth_admin_pw] = val}
+  o.on("-c", "--subset=val") {|val| opts[:config_path] = val}
   o.on_tail("-h", "--help") { exec "grep ^#/<'#{__FILE__}'|cut -c4-" }
   o.parse!
 end
 
-if !opts[:remote_url]
-  puts "You need to input the URL of the web app. Either in an environment variable FS_REMOTE_URL or per option -u"
-  exit
+begin
+  yml_text = File.read(opts[:config_path])
+  config = YAML.load(yml_text)
+rescue
+  puts "Please provide a config file at ./config/production/config.yml similar to ./config/development/config.yml or set the path with option -c or evironment variable FS_CONFIG_PATH"
 end
+
+opts[:remote_url] = config["download"]["remote_url"]
+opts[:auth_admin_user] = config["download"]["auth_admin_user"]
+opts[:key_path] = config["download"]["key_path"]
+
 if !opts[:rsa_password]
-  puts "you need to input the password for the rsa key. Either in an environment variable FS_RSA_PASSWORD or per option -p"
-  exit
-end
-if !opts[:auth_admin_user]
-  puts "you need to input the username of the webapps admin authentication. Either in an environment variable FS_ADMIN_USER or per option -a"
+  puts "you need to set the password for the rsa key in an environment variable FS_RSA_PASSWORD"
   exit
 end
 if !opts[:auth_admin_pw]
-  puts "you need to input the password of the webapps admin authentication. Either in an environment variable FS_ADMIN_PW or per option -a"
+  puts "you need to set the password of the webapps admin authentication in an environment variable FS_ADMIN_PW"
   exit
 end
 

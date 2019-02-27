@@ -3,7 +3,11 @@ mailaccount:
   port: 587
   user: "meinlogin"
   email: "meineemail@meineemaildomain.de"
-
+  
+download:
+  remote_url: "https://webadresse.com"
+  key_path: "./config/development/fuse_shift.private.dev.pem"
+  auth_admin_user: "admin"
 
 send_deadline_warning: 
   csv_path: "./config/production/data.csv" #path to csv file with unconfirmed registrations (output of download)
