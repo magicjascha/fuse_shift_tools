@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name = "fuse_shift_tools"
-  s.version = "0.1.0"
+  s.version = "1.0.0"
 
   s.require_paths = ["lib"]
   s.authors = ["Jascha, Astrid"]
