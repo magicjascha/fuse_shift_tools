@@ -89,13 +89,14 @@ def get(opts)
   uri = URI.parse(url)
   response = Net::HTTP.start(uri.host, uri.port,
     :use_ssl => uri.scheme == 'https') do |http|
-
     request = Net::HTTP::Get.new(uri.request_uri)
     request.basic_auth(opts[:auth_admin_user], opts[:auth_admin_pw])
-
     response = http.request(request)# Net::HTTPResponse object
-    
     response.body
+  end
+  if response == "[]"
+    puts "There are no #{opts[:subset]} registrations".red
+    exit
   end
   JSON.parse(response)
 end
