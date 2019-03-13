@@ -2,6 +2,15 @@
 
 This gem is to be installed on a private computer and contains several commandlinetools to deal with the [fuse_shift webapp](https://github.com/magicjascha/fuse_shift).
 
+People submit registration data for a festival at the web-app FuseShift. As the app follows a high security standard for data, the data is saved on the server only assymmatrically encrypted. In order to assign shifts to the people, the data has to be downloaded to a private computer where the private rsa key resides and decryption can take place. For this purpose you find some commandline tools here.
+
+## Table of Content
+* [Install](#install)
+* [Executables](#executables)
+  * [download](#download)
+  * [send_deadline_warning](#send_deadline_warning)
+  * [fakedata](#fakedata)  
+
 ## Install
 ```
 gem install fuse_shift_tools-1.0.0.gem
